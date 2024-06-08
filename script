@@ -1,0 +1,53 @@
+import os
+import zipfile
+import requests
+
+# Constants
+GEMINI_API_URL = "https://api.gemini.com/v1/generate"
+GEMINI_API_KEY = "your_gemini_api_key"  # Replace with your actual Gemini API key
+
+def get_user_input():
+    return input("What do you want to build/generate? ")
+
+def generate_file_structure(prompt):
+    response = requests.post(
+        GEMINI_API_URL,
+        headers={"Authorization": f"Bearer {GEMINI_API_KEY}"},
+        json={"prompt": prompt}
+    )
+    response.raise_for_status()
+    return response.json()
+
+def generate_files(file_structure, prompt):
+    files = {}
+    for file_path, file_prompt in file_structure.items():
+        response = requests.post(
+            GEMINI_API_URL,
+            headers={"Authorization": f"Bearer {GEMINI_API_KEY}"},
+            json={"prompt": f"{prompt}\n\n{file_prompt}"}
+        )
+        response.raise_for_status()
+        files[file_path] = response.text
+    return files
+
+def save_files_to_disk(files):
+    for file_path, content in files.items():
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w") as file:
+            file.write(content)
+
+def create_zip_file(files, zip_name="generated_app.zip"):
+    with zipfile.ZipFile(zip_name, "w") as zipf:
+        for file_path in files.keys():
+            zipf.write(file_path)
+
+def main():
+    prompt = get_user_input()
+    file_structure = generate_file_structure(prompt)
+    files = generate_files(file_structure, prompt)
+    save_files_to_disk(files)
+    create_zip_file(files)
+    print(f"Application generated and saved as {os.path.abspath('generated_app.zip')}")
+
+if __name__ == "__main__":
+    main()
